@@ -31,7 +31,7 @@ function Run-Build([string]$rootDir, [switch]$restore = $false, [string]$logFile
 
         $args = "/nologo /v:m /nodeReuse:false /m /p:DebugDeterminism=true /p:BootstrapBuildPath=$script:bootstrapDir /p:Features=`"debug-determinism`" /p:UseRoslynAnalyzers=false /p:DeployExtension=false Roslyn.sln"
         if ($logFile -ne $null) {
-            $logFile = Join-Path $binariesDir $logFile
+            $logFile = Join-Path $logDir $logFile
             $args += " /bl:$logFile"
         }
 
@@ -51,7 +51,7 @@ function Get-ObjDir([string]$rootDir) {
 # directory.
 function Get-FilesToProcess([string]$rootDir) {
     $objDir = Get-ObjDir $rootDir
-    foreach ($item in Get-ChildItem -re -in *.dll,*.exe,*.pdb $objDir) {
+    foreach ($item in Get-ChildItem -re -in *.dll,*.exe,*.pdb,*.key $objDir) {
         $fileFullName = $item.FullName 
         $fileName = Split-Path -leaf $fileFullName
 
@@ -142,8 +142,8 @@ function Test-Build([string]$rootDir, $dataMap, [string]$logFile, [switch]$resto
             $errorList += $fileName
 
             # Save out the original and baseline so Jenkins will archive them for investigation
-            [IO.File]::WriteAllBytes((Join-Path $script:errorDirLeft $fileName), $oldFileData.Content)
-            Copy-Item $fileFullName (Join-Path $script:errorDirRight $fileName)
+            [IO.File]::WriteAllBytes((Join-Path $errorDirLeft $fileName), $oldFileData.Content)
+            Copy-Item $fileFullName (Join-Path $errorDirRight $fileName)
             continue
         }
 
@@ -157,7 +157,9 @@ function Test-Build([string]$rootDir, $dataMap, [string]$logFile, [switch]$resto
         }
 
         Write-Host "Archiving failure information"
-        $zipFile = Join-Path $repoDir "Binaries\determinism.zip"
+        $logDir = Join-Path $repoDir "Binaries\Debug\Logs"
+        Create-Directory $logDir
+        $zipFile = Join-Path $logDir "determinism.zip"
         Add-Type -Assembly "System.IO.Compression.FileSystem";
         [System.IO.Compression.ZipFile]::CreateFromDirectory($script:errorDir, $zipFile, "Fastest", $true);
 
@@ -168,14 +170,6 @@ function Test-Build([string]$rootDir, $dataMap, [string]$logFile, [switch]$resto
 
 function Run-Test() {
     $rootDir = $repoDir
-
-    # Ensure the error directory is written for all analysis to use.
-    $script:errorDir = Join-Path $repoDir "Binaries\Determinism"
-    $script:errorDirLeft = Join-Path $script:errorDir "Left"
-    $script:errorDirRight = Join-Path $script:errorDir "Right"
-    Create-Directory $script:errorDir
-    Create-Directory $script:errorDirLeft
-    Create-Directory $script:errorDirRight
 
     # Run the initial build so that we can populate the maps
     Run-Build $repoDir -logFile "initial.binlog"
@@ -200,6 +194,16 @@ function Run-Test() {
 
 try {
     . (Join-Path $PSScriptRoot "build-utils.ps1")
+
+    # Create all of the logging directories
+    $configDir = Join-Path $binariesDir "Debug"
+    $logDir = Join-Path $configDir "Logs"
+    $errorDir = Join-Path $binariesDir "Determinism"
+    $errorDirLeft = Join-Path $errorDir "Left"
+    $errorDirRight = Join-Path $errorDir "Right"
+    Create-Directory $logDir
+    Create-Directory $errorDirLeft
+    Create-Directory $errorDirRight
 
     $dotnet = Ensure-DotnetSdk
     $msbuild = Ensure-MSBuild
