@@ -1,6 +1,7 @@
 [CmdletBinding(PositionalBinding=$false)]
 param ( [string]$bootstrapDir = "",
-        [switch]$debugDeterminism = $false)
+        [switch]$debugDeterminism = $false,
+        [string]$altRootDrive = "q:")
 
 Set-StrictMode -version 2.0
 $ErrorActionPreference = "Stop"
@@ -182,14 +183,15 @@ function Run-Test() {
     # Run another build in a different source location and verify that path mapping 
     # allows the build to be identical.  To do this we'll copy the entire source 
     # tree under the Binaries\q directory and run a build from there.
-    $altRootDir = Join-Path "$repoDir\Binaries" "q"
-    Remove-Item -re -fo $altRootDir -ErrorAction SilentlyContinue
-    & robocopy $repoDir $altRootDir /E /XD $binariesDir /XD ".git" /njh /njs /ndl /nc /ns /np /nfl
-
-    # Symlink the .git directory to make SourceLink think Binaries/q is the repo root:
-    Exec-Command "cmd" "/c mklink /d $(Join-Path $altRootDir `".git`") $(Join-Path $repoDir `".git`")"
-
-    Test-Build -rootDir $altRootDir -dataMap $dataMap -logFile "test2.binlog" -restore
+    $alt
+    Exec-Command "subst" "$altRootDrive $repoDir"
+    try {
+        $altRootDir = "$($altRootDrive)\"
+        Test-Build -rootDir $altRootDir -dataMap $dataMap -logFile "test2.binlog" -restore
+    }
+    finally {
+        Exec-Command "subst" "$altRootDrive /d"
+    }
 }
 
 try {
