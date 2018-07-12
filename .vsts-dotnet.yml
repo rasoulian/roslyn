@@ -13,10 +13,10 @@ phases:
     - task: PublishBuildArtifacts@1
       inputs:
         PathtoPublish: '$(Build.SourcesDirectory)\Binaries\$(configuration)\Logs'
-        ArtifactName: 'Build Diagnostic Files'
+        ArtifactName: 'Build Diagnostic Files $(configuration)'
         publishLocation: Container
       continueOnError: true
-      condition: succeededOrFailed()
+      condition: failed()
            
 - phase: Windows_Determinism_Test
   steps:
@@ -24,8 +24,8 @@ phases:
 
     - task: PublishBuildArtifacts@1
       inputs:
-        PathtoPublish: '$(Build.SourcesDirectory)\Binaries\$(configuration)\Logs'
-        ArtifactName: 'Build Diagnostic Files'
+        PathtoPublish: '$(Build.SourcesDirectory)\Binaries\Debug\Logs'
+        ArtifactName: 'Build Determinism Files'
         publishLocation: Container
       continueOnError: true
-      condition: succeededOrFailed()
+      condition: failed()
