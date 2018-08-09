@@ -131,6 +131,9 @@ namespace Microsoft.CodeAnalysis.Editor.UnitTests.CodeActions
         protected Task TestSmartTagTextAsync(string initialMarkup, string displayText, int index)
             => TestSmartTagTextAsync(initialMarkup, displayText, new TestParameters(index: index));
 
+        protected Task TestSmartTagGlyphTagsAsync(string initialMarkup, ImmutableArray<string> glyphTags, int index)
+            => TestSmartTagGlyphTagsAsync(initialMarkup, glyphTags, new TestParameters(index: index));
+
         protected async Task TestSmartTagTextAsync(
             string initialMarkup,
             string displayText,
@@ -140,6 +143,18 @@ namespace Microsoft.CodeAnalysis.Editor.UnitTests.CodeActions
             {
                 var (_, action) = await GetCodeActionsAsync(workspace, parameters);
                 Assert.Equal(displayText, action.Title);
+            }
+        }
+
+        protected async Task TestSmartTagGlyphTagsAsync(
+            string initialMarkup,
+            ImmutableArray<string> glyph,
+            TestParameters parameters = default)
+        {
+            using (var workspace = CreateWorkspaceFromOptions(initialMarkup, parameters))
+            {
+                var (_, action) = await GetCodeActionsAsync(workspace, parameters);
+                Assert.Equal(glyph, action.Tags);
             }
         }
 
@@ -487,7 +502,16 @@ namespace Microsoft.CodeAnalysis.Editor.UnitTests.CodeActions
                         var root = await doc.GetSyntaxRootAsync();
                         var expectedDocument = expectedProject.Documents.Single(d => d.Name == doc.Name);
                         var expectedRoot = await expectedDocument.GetSyntaxRootAsync();
-                        Assert.Equal(expectedRoot.ToFullString(), root.ToFullString());
+
+                        var expected = expectedRoot.ToFullString();
+                        if (expected == "")
+                        {
+                            Assert.Equal((object)expected, root.ToFullString());
+                        }
+                        else
+                        {
+                            Assert.Equal(expected, root.ToFullString());
+                        }
                     }
                 }
             }

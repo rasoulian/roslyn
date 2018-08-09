@@ -5,6 +5,7 @@ Imports System.Composition
 Imports Microsoft.CodeAnalysis
 Imports Microsoft.CodeAnalysis.Editing
 Imports Microsoft.CodeAnalysis.Host.Mef
+Imports Microsoft.CodeAnalysis.LanguageServices
 Imports Microsoft.CodeAnalysis.PooledObjects
 Imports Microsoft.CodeAnalysis.Simplification
 Imports Microsoft.CodeAnalysis.VisualBasic.Syntax
@@ -21,8 +22,14 @@ Namespace Microsoft.CodeAnalysis.VisualBasic.CodeGeneration
 
         Friend Overrides ReadOnly Property RequiresExplicitImplementationForInterfaceMembers As Boolean = True
 
+        Friend Overrides ReadOnly Property SyntaxFacts As ISyntaxFactsService = VisualBasicSyntaxFactsService.Instance
+
         Friend Overrides Function EndOfLine(text As String) As SyntaxTrivia
             Return SyntaxFactory.EndOfLine(text)
+        End Function
+
+        Friend Overrides Function SeparatedList(Of TElement As SyntaxNode)(list As SyntaxNodeOrTokenList) As SeparatedSyntaxList(Of TElement)
+            Return SyntaxFactory.SeparatedList(Of TElement)(list)
         End Function
 
 #Region "Expressions and Statements"
@@ -319,6 +326,10 @@ Namespace Microsoft.CodeAnalysis.VisualBasic.CodeGeneration
 
         Public Overrides Function QualifiedName(left As SyntaxNode, right As SyntaxNode) As SyntaxNode
             Return SyntaxFactory.QualifiedName(DirectCast(left, NameSyntax), DirectCast(right, SimpleNameSyntax))
+        End Function
+
+        Friend Overrides Function GlobalAliasedName(name As SyntaxNode) As SyntaxNode
+            Return QualifiedName(SyntaxFactory.GlobalName(), name)
         End Function
 
         Public Overrides Function ReferenceEqualsExpression(left As SyntaxNode, right As SyntaxNode) As SyntaxNode
@@ -4148,6 +4159,5 @@ Namespace Microsoft.CodeAnalysis.VisualBasic.CodeGeneration
         End Function
 
 #End Region
-
     End Class
 End Namespace
